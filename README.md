@@ -50,6 +50,7 @@ AMADEUS_CLIENT_SECRET=YOUR_AMADEUS_CLIENT_SECRET
 AMADEUS_ENV=test
 ---------
 
+
 ▶️ Demo
 
 Live Demo: https://flight-search-assessment-kappa.vercel.app/
