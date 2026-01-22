@@ -168,12 +168,22 @@ export function SearchForm({ onSubmit }: Props) {
           Reset
         </button>
 
-        <button
-          type="submit"
-          className="h-10 rounded-xl bg-black px-4 text-sm font-medium text-white hover:bg-zinc-900"
-        >
-          Search
-        </button>
+<button
+  type="submit"
+  className="
+    h-10 rounded-xl
+    bg-zinc-200 text-zinc-900
+    px-4 text-sm font-medium
+    transition-all duration-200 ease-out
+    hover:bg-zinc-300 hover:shadow-md hover:-translate-y-[1px]
+    active:bg-zinc-400 active:translate-y-0 active:shadow-sm
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60
+  "
+>
+  Search
+</button>
+
+
       </div>
     </form>
   );
