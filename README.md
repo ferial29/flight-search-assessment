@@ -52,6 +52,7 @@ AMADEUS_ENV=test
 
 ▶️ Demo
 
-Live Demo: https://flight-search-assessment-uv8i.vercel.app/
+Live Demo: https://flight-search-assessment-kappa.vercel.app/
 
-Loom Walkthrough (3–4 min): https://loom.com/share/your-video-id
+Loom Walkthrough (3–4 min): https://www.loom.com/share/546933af05cf4da1b6ca31853e37a7a3
+Github-link :https://github.com/ferial29/flight-search-assessment
