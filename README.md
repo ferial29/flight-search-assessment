@@ -1,56 +1,57 @@
-# Flight Search Engine (Frontend Assessment)
+# ✈️ Flight Search Engine – Frontend React Engineer Assessment
 
-A responsive flight search experience inspired by the utility of Google Flights (not a visual clone).
-It includes real-time filtering, sorting, and a live price trend chart that updates instantly as users refine results.
+A modern flight search engine built with **Next.js (App Router)** and **TypeScript**, focusing on clean UI, real-time filtering, and resilient data handling using the **Amadeus Self-Service API (Sandbox)**.
 
-## Demo
-- Live: <YOUR_DEPLOYED_URL>
-- Loom walkthrough (3–4 mins): https://www.loom.com/share/5d017656c3a24bd3adf8c5d73a3bbc5f
+This project was created as part of a frontend engineering assessment to demonstrate architecture, UX decisions, and state management.
 
-## Features
-- **Flight Search + Results** using Amadeus Self-Service API (Test environment)
-- **Complex Filtering (simultaneous)**:
-  - Stops (non-stop / 1 stop / 2+ stops)
-  - Airline selection
-  - Price range (min/max)
-- **Sorting**: Cheapest / Fastest / Best (weighted)
-- **Live Price Trend Chart** (Recharts) that updates in real time with filters & sorting
-- **Responsive UI** (mobile + desktop)
-- **UX polish**:
-  - Sticky filter panel on desktop
-  - Clear summary bar (results count, cheapest, fastest)
-  - Empty states and basic error handling
+---
 
-## Tech Stack
-- **Next.js (App Router)** + TypeScript
-- **Zustand** for client state (results + filters + sorting)
-- **Recharts** for the live price chart
-- **Tailwind CSS** for styling
+##  Features
 
-## Architecture Notes
-### Why a server-side API route?
-Amadeus requires a client credential token. The app calls Amadeus through a Next.js route:
-- Keeps credentials **off the client**
-- Avoids CORS issues
-- Allows token caching on the server
+- Flight search using **IATA airport codes** (e.g. MCT, DXB, IST)
+- Supports **one-way** and **round-trip** searches
+- Passenger count and cabin class selection
+- Real-time filtering:
+  - Stops (non-stop, 1 stop, 2+ stops)
+  - Airlines
+  - Price range
+- Sorting options:
+  - Cheapest
+  - Fastest
+  - Best (balanced)
+- **Live price trend chart** that updates instantly with filters
+- Fully **responsive design** (desktop & mobile)
+- Graceful handling of external API failures
 
-Flow:
-1) UI submits search params  
-2) `GET /api/flights` (Next.js route) requests an Amadeus access token  
-3) Calls Amadeus Flight Offers API  
-4) Normalizes the response into a stable `FlightResult` shape  
-5) UI renders results and derives chart + filters instantly from the dataset
+---
 
-### Real-time filtering + chart sync
-Filtering/sorting is applied client-side on the in-memory dataset:
-- Flight list updates instantly
-- Summary stats recompute instantly
-- Chart data is derived from the same filtered dataset
+##  Architecture Overview
 
-This avoids re-fetching on each filter interaction and improves responsiveness.
+- **Next.js App Router** for routing and server-side API handling
+- **API Route (`/api/flights`)** to securely communicate with Amadeus
+- **Zustand** for global state management (results, filters, sorting)
+- **React Hook Form + Zod** for form handling and validation
+- **Recharts** for price trend visualization
+- **Tailwind CSS** for styling and layout
 
-## Setup
+---
 
-### 1) Install dependencies
-```bash
-npm install
+##  API & Environment Variables
+
+The application integrates with the **Amadeus Self-Service API (Test/Sandbox environment)**.
+
+For security reasons, API credentials are **not committed** to this repository.  
+They must be provided via environment variables:
+
+```env
+# Amadeus Self-Service API (Test Environment)
+AMADEUS_CLIENT_ID=YOUR_AMADEUS_CLIENT_ID
+AMADEUS_CLIENT_SECRET=YOUR_AMADEUS_CLIENT_SECRET
+AMADEUS_ENV=test
+---------
+
+▶️ Demo
+
+Live Demo: https://your-vercel-link.vercel.app
+
+Loom Walkthrough (3–4 min): https://loom.com/share/your-video-id

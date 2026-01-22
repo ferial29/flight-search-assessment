@@ -2,92 +2,112 @@
 
 import { Card } from "@/components/ui/Card";
 import { SearchForm } from "@/components/search/SearchForm";
-import type { SearchFormValues } from "@/components/search/schema";
 import { FiltersPanel } from "@/components/results/FiltersPanel";
-import { ResultsList } from "@/components/results/ResultsList";
 import { ResultsSummaryBar } from "@/components/results/ResultsSummaryBar";
-import { PriceChart } from "@/components/charts/PriceChart";
+import { ResultsList } from "@/components/results/ResultsList";
+import PriceChart from "@/components/charts/PriceChart";
 import { useSearchStore } from "@/store/searchStore";
+import type { SearchFormValues } from "@/components/search/schema";
+
+function toQuery(values: SearchFormValues) {
+  const params = new URLSearchParams();
+  params.set("origin", values.origin);
+  params.set("destination", values.destination);
+  params.set("departDate", values.departDate);
+  params.set("adults", String(values.adults));
+  params.set("cabin", values.cabin);
+
+  // If you later add return-leg support in API, you can pass it like:
+  // if (values.tripType === "roundTrip" && values.returnDate) params.set("returnDate", values.returnDate);
+
+  return params.toString();
+}
 
 export function SearchExperience() {
+  const error = useSearchStore((s) => s.error);
+  const isLoading = useSearchStore((s) => s.isLoading);
+
   const setSearchParams = useSearchStore((s) => s.setSearchParams);
   const setResultsRaw = useSearchStore((s) => s.setResultsRaw);
   const setLoading = useSearchStore((s) => s.setLoading);
   const setError = useSearchStore((s) => s.setError);
 
   const handleSearch = async (values: SearchFormValues) => {
-    setError(null);
-    setLoading(true);
-    setSearchParams(values);
-
     try {
-      const qs = new URLSearchParams({
-        origin: values.origin,
-        destination: values.destination,
-        departDate: values.departDate,
-        adults: String(values.adults),
-        cabin: values.cabin,
-      });
+      setError(null);
+      setLoading(true);
+      setSearchParams(values);
 
-      if (values.tripType === "roundTrip" && values.returnDate) {
-        qs.set("returnDate", values.returnDate);
-      }
-
-      const res = await fetch(`/api/flights?${qs.toString()}`, {
+      const res = await fetch(`/api/flights?${toQuery(values)}`, {
         method: "GET",
+        headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed: ${res.status}`);
+        const msg = typeof data?.error === "string" ? data.error : "Search failed. Please try again.";
+        throw new Error(msg);
       }
 
-      const json = (await res.json()) as { results: any[] };
-      setResultsRaw(json.results);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to fetch flights. Please try again.");
+      // Accept both shapes:
+      // 1) { results: [...] }
+      // 2) [...] (array)
+      const results = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+
+      setResultsRaw(results);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setError(msg);
+      setResultsRaw([]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="space-y-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Flight Search Engine</h1>
-        <p className="text-sm text-zinc-300">
-          Search flights, apply filters, and see live price trends.
+    <div className="mx-auto max-w-6xl px-4 pb-16">
+      <div className="pt-8">
+        <h1 className="text-2xl font-bold text-zinc-900">Flight Search</h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Search flights, apply filters, and see the price chart update instantly.
         </p>
-      </header>
+      </div>
 
-      <Card>
-        <SearchForm onSubmit={handleSearch} />
-      </Card>
+      {/* Search */}
+      <div className="mt-6">
+        <Card title="Search" subtitle="Use IATA codes for now (MCT, DXB, IST...)">
+          <SearchForm onSubmit={handleSearch} />
+        </Card>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-        {/* Sticky + internally scrollable filters for better UX */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
-          <Card title="Filters">
-            <div className="max-h-[calc(100vh-120px)] overflow-auto pr-1">
+      {/* Main */}
+      <div className="mt-6 grid grid-cols-12 gap-4">
+        {/* Filters */}
+        <div className="col-span-12 lg:col-span-4">
+          <div className="lg:sticky lg:top-4">
+            <Card className="p-5">
               <FiltersPanel />
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <Card title="Results">
-            <div className="space-y-3">
-              <ResultsSummaryBar />
-              <ResultsList />
+        {/* Results + Chart */}
+        <div className="col-span-12 lg:col-span-8 space-y-4">
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {error}
             </div>
-          </Card>
+          ) : null}
 
-          <Card title="Price Trend">
-            <PriceChart />
-          </Card>
+          <ResultsSummaryBar />
+
+          <ResultsList isLoading={isLoading} />
+
+          <PriceChart />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

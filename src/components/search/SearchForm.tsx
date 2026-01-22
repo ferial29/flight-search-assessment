@@ -56,15 +56,8 @@ export function SearchForm({ onSubmit }: Props) {
       className="space-y-4"
       noValidate
     >
-      {/* Header + Trip type toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-zinc-100">Search</p>
-          <p className="text-xs text-zinc-400">
-            Use IATA codes for now (MCT, DXB, IST…)
-          </p>
-        </div>
-
+      {/* Trip type toggle (header text removed to avoid duplication) */}
+      <div className="flex items-center justify-end">
         <Segmented
           value={tripType}
           // Update trip type and revalidate dependent fields

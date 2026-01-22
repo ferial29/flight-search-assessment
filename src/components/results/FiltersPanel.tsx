@@ -1,153 +1,170 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchStore } from "@/store/searchStore";
-import { Label } from "@/components/ui/Label";
-import { Input } from "@/components/ui/Input";
+
+function Pill({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-xl px-3 py-2 text-sm font-medium transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60",
+        active
+          ? "bg-zinc-900 text-white shadow-sm"
+          : "bg-white text-zinc-700 hover:bg-zinc-50 border border-zinc-200",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function FiltersPanel() {
-  const resultsRaw = useSearchStore((s) => s.resultsRaw);
   const filters = useSearchStore((s) => s.filters);
-
   const setStops = useSearchStore((s) => s.setStops);
   const toggleAirline = useSearchStore((s) => s.toggleAirline);
   const setPriceRange = useSearchStore((s) => s.setPriceRange);
   const resetFilters = useSearchStore((s) => s.resetFilters);
 
-  // Derive airlines list from API results
-  const airlineOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of resultsRaw) {
-      if (!map.has(r.airlineCode)) map.set(r.airlineCode, r.airline);
+  const raw = useSearchStore((s) => s.resultsRaw);
+
+  const { minAvailable, maxAvailable, airlinesAvailable } = useMemo(() => {
+    if (!raw.length) {
+      return {
+        minAvailable: 0,
+        maxAvailable: 0,
+        airlinesAvailable: [] as { code: string; name: string; count: number }[],
+      };
     }
-    return Array.from(map.entries())
-      .map(([code, name]) => ({ code, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [resultsRaw]);
 
-  // Derive price range info (helpful UX)
-  const priceStats = useMemo(() => {
-    if (resultsRaw.length === 0) return { min: 0, max: 0 };
-    const prices = resultsRaw.map((r) => r.price);
-    return { min: Math.min(...prices), max: Math.max(...prices) };
-  }, [resultsRaw]);
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
 
-  const toggleStop = (stop: 0 | 1 | 2) => {
-    const exists = filters.stops.includes(stop);
-    const next = exists
-      ? filters.stops.filter((s) => s !== stop)
-      : [...filters.stops, stop];
+    const map = new Map<string, { code: string; name: string; count: number }>();
+    for (const r of raw) {
+      if (r.price < min) min = r.price;
+      if (r.price > max) max = r.price;
 
-    // Keep at least one stop option selected (better UX)
-    if (next.length === 0) return;
-    setStops(next as any);
+      const prev = map.get(r.airlineCode);
+      if (prev) prev.count += 1;
+      else map.set(r.airlineCode, { code: r.airlineCode, name: r.airline, count: 1 });
+    }
+
+    return {
+      minAvailable: Number.isFinite(min) ? min : 0,
+      maxAvailable: Number.isFinite(max) ? max : 0,
+      airlinesAvailable: Array.from(map.values()).sort((a, b) => b.count - a.count),
+    };
+  }, [raw]);
+
+  const [minInput, setMinInput] = useState<string>(filters.priceMin?.toString() ?? "");
+  const [maxInput, setMaxInput] = useState<string>(filters.priceMax?.toString() ?? "");
+
+  const applyPrice = () => {
+    const min = minInput.trim() === "" ? null : Number(minInput);
+    const max = maxInput.trim() === "" ? null : Number(maxInput);
+
+    setPriceRange(
+      Number.isFinite(min as number) ? (min as number) : null,
+      Number.isFinite(max as number) ? (max as number) : null
+    );
+  };
+
+  const toggleStop = (v: 0 | 1 | 2) => {
+    const has = filters.stops.includes(v);
+    const next = has ? filters.stops.filter((x) => x !== v) : [...filters.stops, v];
+    const safe = next.length ? (next as Array<0 | 1 | 2>) : ([0, 1, 2] as Array<0 | 1 | 2>);
+    setStops(safe);
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top actions */}
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-400">
-          Update results instantly (list + chart)
-        </p>
-
+        <div>
+          <div className="text-sm font-semibold text-zinc-900">Filters</div>
+          <div className="mt-1 text-xs text-zinc-500">Updates results & chart instantly</div>
+        </div>
         <button
           type="button"
-          onClick={resetFilters}
-          className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-xs text-zinc-300 hover:bg-zinc-800"
+          onClick={() => {
+            resetFilters();
+            setMinInput("");
+            setMaxInput("");
+          }}
+          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
         >
           Reset
         </button>
       </div>
 
       {/* Stops */}
-      <div className="space-y-2">
-        <Label>Stops</Label>
-
+      <div>
+        <div className="mb-2 text-xs font-semibold text-zinc-700">Stops</div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => toggleStop(0)}
-            className={[
-              "h-9 rounded-xl border px-3 text-xs transition",
-              filters.stops.includes(0)
-                ? "border-zinc-600 bg-zinc-100 text-zinc-950"
-                : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800",
-            ].join(" ")}
-          >
-            Non-stop
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleStop(1)}
-            className={[
-              "h-9 rounded-xl border px-3 text-xs transition",
-              filters.stops.includes(1)
-                ? "border-zinc-600 bg-zinc-100 text-zinc-950"
-                : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800",
-            ].join(" ")}
-          >
-            1 stop
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleStop(2)}
-            className={[
-              "h-9 rounded-xl border px-3 text-xs transition",
-              filters.stops.includes(2)
-                ? "border-zinc-600 bg-zinc-100 text-zinc-950"
-                : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800",
-            ].join(" ")}
-          >
-            2+ stops
-          </button>
+          <Pill active={filters.stops.includes(0)} onClick={() => toggleStop(0)}>Non-stop</Pill>
+          <Pill active={filters.stops.includes(1)} onClick={() => toggleStop(1)}>1 stop</Pill>
+          <Pill active={filters.stops.includes(2)} onClick={() => toggleStop(2)}>2+ stops</Pill>
         </div>
       </div>
 
       {/* Price */}
-      <div className="space-y-2">
-        <Label>Price (USD)</Label>
-        <p className="text-xs text-zinc-500">
-          Available: {priceStats.min} – {priceStats.max}
-        </p>
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-xs font-semibold text-zinc-700">Price</div>
+          <div className="text-xs text-zinc-500">
+            {minAvailable} – {maxAvailable} USD
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Input
+          <input
+            value={minInput}
+            onChange={(e) => setMinInput(e.target.value)}
             placeholder="Min"
-            inputMode="numeric"
-            value={filters.priceMin ?? ""}
-            onChange={(e) =>
-              setPriceRange(
-                e.target.value ? Number(e.target.value) : null,
-                filters.priceMax
-              )
-            }
+            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
           />
-          <Input
+          <input
+            value={maxInput}
+            onChange={(e) => setMaxInput(e.target.value)}
             placeholder="Max"
-            inputMode="numeric"
-            value={filters.priceMax ?? ""}
-            onChange={(e) =>
-              setPriceRange(
-                filters.priceMin,
-                e.target.value ? Number(e.target.value) : null
-              )
-            }
+            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
           />
+        </div>
+
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={applyPrice}
+            className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
+          >
+            Apply
+          </button>
+          <div className="text-xs text-zinc-500">Tip: leave empty for no limit</div>
         </div>
       </div>
 
       {/* Airlines */}
-      <div className="space-y-2">
-        <Label>Airlines</Label>
+      <div>
+        <div className="mb-2 text-xs font-semibold text-zinc-700">Airlines</div>
 
-        {airlineOptions.length === 0 ? (
-          <p className="text-sm text-zinc-500">Run a search to see airlines.</p>
+        {!airlinesAvailable.length ? (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+            Run a search to load airlines.
+          </div>
         ) : (
-          <div className="space-y-2">
-            {airlineOptions.map((a) => {
+          <div className="max-h-[320px] space-y-2 overflow-auto pr-1">
+            {airlinesAvailable.map((a) => {
               const checked = filters.airlines.includes(a.code);
               return (
                 <button
@@ -155,24 +172,19 @@ export function FiltersPanel() {
                   type="button"
                   onClick={() => toggleAirline(a.code)}
                   className={[
-                    "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition",
+                    "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm transition",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60",
                     checked
-                      ? "border-zinc-600 bg-zinc-100 text-zinc-950"
-                      : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800",
+                      ? "border-indigo-200 bg-indigo-50"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50",
                   ].join(" ")}
                 >
-                  <span className="truncate">
+                  <span className="min-w-0 truncate text-zinc-900">
                     {a.name} <span className="text-zinc-500">({a.code})</span>
                   </span>
-
-                  <span
-                    className={[
-                      "h-4 w-4 rounded border",
-                      checked
-                        ? "border-zinc-950 bg-zinc-950"
-                        : "border-zinc-600",
-                    ].join(" ")}
-                  />
+                  <span className="ml-3 shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600">
+                    {a.count}
+                  </span>
                 </button>
               );
             })}

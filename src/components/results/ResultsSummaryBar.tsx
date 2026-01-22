@@ -10,70 +10,56 @@ function formatDuration(mins: number) {
 }
 
 export function ResultsSummaryBar() {
-  const resultsRaw = useSearchStore((s) => s.resultsRaw);
-  const filters = useSearchStore((s) => s.filters);
+  const results = useSearchStore((s) => s.resultsFiltered);
   const sortBy = useSearchStore((s) => s.sortBy);
   const setSortBy = useSearchStore((s) => s.setSortBy);
 
-  // Derive the same filtered dataset used by the results list (single source of truth)
-  const filtered = useMemo(() => {
-    let list = [...resultsRaw];
+  const summary = useMemo(() => {
+    if (!results.length) return { count: 0, cheapest: null as number | null, fastest: null as number | null };
+    const cheapest = Math.min(...results.map((r) => r.price));
+    const fastest = Math.min(...results.map((r) => r.durationMins));
+    return { count: results.length, cheapest, fastest };
+  }, [results]);
 
-    // Stops
-    list = list.filter((r) => filters.stops.includes(r.stops as any));
-
-    // Airlines (if none selected, allow all)
-    if (filters.airlines.length > 0) {
-      list = list.filter((r) => filters.airlines.includes(r.airlineCode));
-    }
-
-    // Price range
-    if (filters.priceMin != null) list = list.filter((r) => r.price >= filters.priceMin);
-    if (filters.priceMax != null) list = list.filter((r) => r.price <= filters.priceMax);
-
-    return list;
-  }, [resultsRaw, filters]);
-
-  const stats = useMemo(() => {
-    if (filtered.length === 0) return null;
-    const cheapest = Math.min(...filtered.map((r) => r.price));
-    const fastest = Math.min(...filtered.map((r) => r.durationMins));
-    return { count: filtered.length, cheapest, fastest };
-  }, [filtered]);
-
-  if (!stats) return null;
+  const Tab = (key: "cheapest" | "fastest" | "best", label: string) => {
+    const active = sortBy === key;
+    return (
+      <button
+        type="button"
+        onClick={() => setSortBy(key)}
+        className={[
+          "rounded-xl px-3 py-2 text-sm font-medium transition",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60",
+          active
+            ? "bg-zinc-900 text-white shadow-sm"
+            : "bg-white text-zinc-700 hover:bg-zinc-50 border border-zinc-200",
+        ].join(" ")}
+      >
+        {label}
+      </button>
+    );
+  };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2">
-      {/* Summary */}
-      <p className="text-xs text-zinc-300">
-        <span className="font-medium text-zinc-100">{stats.count}</span> results •
-        Cheapest <span className="text-zinc-100">${stats.cheapest}</span> •
-        Fastest <span className="text-zinc-100">{formatDuration(stats.fastest)}</span>
-      </p>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white/70 p-3 backdrop-blur">
+      <div className="text-sm text-zinc-700">
+        <span className="font-semibold text-zinc-900">{summary.count}</span> results
+        {summary.cheapest !== null ? (
+          <>
+            {" "}• Cheapest <span className="font-semibold text-zinc-900">${summary.cheapest}</span>
+          </>
+        ) : null}
+        {summary.fastest !== null ? (
+          <>
+            {" "}• Fastest <span className="font-semibold text-zinc-900">{formatDuration(summary.fastest)}</span>
+          </>
+        ) : null}
+      </div>
 
-      {/* Sort controls */}
-      <div className="flex items-center gap-1">
-        {[
-          { key: "cheapest", label: "Cheapest" },
-          { key: "fastest", label: "Fastest" },
-          { key: "best", label: "Best" },
-        ].map((opt) => {
-          const active = sortBy === (opt.key as any);
-          return (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setSortBy(opt.key as any)}
-              className={[
-                "h-8 rounded-lg px-3 text-xs transition",
-                active ? "bg-zinc-100 text-zinc-950" : "text-zinc-300 hover:bg-zinc-900",
-              ].join(" ")}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
+      <div className="flex items-center gap-2">
+        {Tab("best", "Best")}
+        {Tab("cheapest", "Cheapest")}
+        {Tab("fastest", "Fastest")}
       </div>
     </div>
   );

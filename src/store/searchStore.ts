@@ -1,21 +1,22 @@
 import { create } from "zustand";
 import type { SearchFormValues } from "@/components/search/schema";
+import { getVisibleResults } from "@/lib/visibleResults";
 
 export type FlightResult = {
   id: string;
-  airline: string; // e.g. "Oman Air"
-  airlineCode: string; // e.g. "WY"
+  airline: string;
+  airlineCode: string;
   stops: number; // 0, 1, 2...
-  price: number; // numeric, e.g. 120.5
-  currency: string; // e.g. "USD"
-  departTime: string; // "08:15"
-  arriveTime: string; // "12:40"
-  durationMins: number; // total duration in minutes
+  price: number;
+  currency: string;
+  departTime: string;
+  arriveTime: string;
+  durationMins: number;
 };
 
 export type FiltersState = {
-  stops: Array<0 | 1 | 2>; // 2 represents "2+"
-  airlines: string[]; // airline codes
+  stops: Array<0 | 1 | 2>;
+  airlines: string[];
   priceMin: number | null;
   priceMax: number | null;
 };
@@ -23,23 +24,17 @@ export type FiltersState = {
 export type SortBy = "cheapest" | "fastest" | "best";
 
 type SearchState = {
-  // Last submitted search (used later for API requests and URL sync)
   searchParams: SearchFormValues | null;
 
-  // Raw results (unfiltered)
   resultsRaw: FlightResult[];
+  resultsFiltered: FlightResult[];
 
-  // UI state
   isLoading: boolean;
   error: string | null;
 
-  // Filters
   filters: FiltersState;
-
-  // Sorting
   sortBy: SortBy;
 
-  // Actions
   setSearchParams: (params: SearchFormValues) => void;
   setResultsRaw: (results: FlightResult[]) => void;
   setLoading: (v: boolean) => void;
@@ -60,38 +55,72 @@ const defaultFilters: FiltersState = {
   priceMax: null,
 };
 
-export const useSearchStore = create<SearchState>((set) => ({
-  searchParams: null,
-  resultsRaw: [],
-  isLoading: false,
-  error: null,
-  filters: defaultFilters,
-  sortBy: "cheapest",
+export const useSearchStore = create<SearchState>((set, get) => {
+  const recompute = () => {
+    const s = get();
+    const raw = s.resultsRaw ?? [];
+    const filters = s.filters ?? defaultFilters;
+    const sortBy = s.sortBy ?? "best";
 
-  setSearchParams: (params) => set({ searchParams: params }),
-  setResultsRaw: (results) => set({ resultsRaw: results }),
-  setLoading: (v) => set({ isLoading: v }),
-  setError: (msg) => set({ error: msg }),
+    const next = getVisibleResults(raw as any, filters as any, sortBy as any) as FlightResult[];
+    set({ resultsFiltered: next });
+  };
 
-  setStops: (stops) => set((s) => ({ filters: { ...s.filters, stops } })),
+  return {
+    searchParams: null,
 
-  toggleAirline: (airlineCode) =>
-    set((s) => {
-      const exists = s.filters.airlines.includes(airlineCode);
-      return {
-        filters: {
-          ...s.filters,
-          airlines: exists
-            ? s.filters.airlines.filter((x) => x !== airlineCode)
-            : [...s.filters.airlines, airlineCode],
-        },
-      };
-    }),
+    resultsRaw: [],
+    resultsFiltered: [],
 
-  setPriceRange: (min, max) =>
-    set((s) => ({ filters: { ...s.filters, priceMin: min, priceMax: max } })),
+    isLoading: false,
+    error: null,
 
-  resetFilters: () => set({ filters: defaultFilters }),
+    filters: defaultFilters,
+    sortBy: "best",
 
-  setSortBy: (v) => set({ sortBy: v }),
-}));
+    setSearchParams: (params) => set({ searchParams: params }),
+
+    setResultsRaw: (results) => {
+      set({ resultsRaw: results ?? [] });
+      recompute();
+    },
+
+    setLoading: (v) => set({ isLoading: v }),
+    setError: (msg) => set({ error: msg }),
+
+    setStops: (stops) => {
+      set((s) => ({ filters: { ...s.filters, stops } }));
+      recompute();
+    },
+
+    toggleAirline: (airlineCode) => {
+      set((s) => {
+        const exists = s.filters.airlines.includes(airlineCode);
+        return {
+          filters: {
+            ...s.filters,
+            airlines: exists
+              ? s.filters.airlines.filter((x) => x !== airlineCode)
+              : [...s.filters.airlines, airlineCode],
+          },
+        };
+      });
+      recompute();
+    },
+
+    setPriceRange: (min, max) => {
+      set((s) => ({ filters: { ...s.filters, priceMin: min, priceMax: max } }));
+      recompute();
+    },
+
+    resetFilters: () => {
+      set({ filters: defaultFilters });
+      recompute();
+    },
+
+    setSortBy: (v) => {
+      set({ sortBy: v });
+      recompute();
+    },
+  };
+});
