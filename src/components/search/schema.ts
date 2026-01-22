@@ -5,19 +5,25 @@ export const tripTypeSchema = z.enum(["roundTrip", "oneWay"]);
 export const searchSchema = z
   .object({
     tripType: tripTypeSchema,
+
     origin: z
       .string()
       .trim()
       .min(3, "Origin is required (use IATA like MCT)")
       .max(3, "Use 3-letter IATA code"),
+
     destination: z
       .string()
       .trim()
       .min(3, "Destination is required (use IATA like DXB)")
       .max(3, "Use 3-letter IATA code"),
+
     departDate: z.string().min(1, "Departure date is required"),
     returnDate: z.string().optional(),
-    adults: z.coerce.number().int().min(1).max(9),
+
+    // ✅ Keep it strictly number to satisfy RHF+Zod typing in production builds
+    adults: z.number().int().min(1).max(9),
+
     cabin: z.enum(["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]),
   })
   .superRefine((val, ctx) => {
@@ -29,10 +35,11 @@ export const searchSchema = z
           path: ["returnDate"],
         });
       }
-      // اگر هر دو تاریخ بود، ترتیبش منطقی باشد
+
       if (val.returnDate && val.departDate) {
         const d1 = new Date(val.departDate);
         const d2 = new Date(val.returnDate);
+
         if (!Number.isNaN(d1.getTime()) && !Number.isNaN(d2.getTime())) {
           if (d2 < d1) {
             ctx.addIssue({

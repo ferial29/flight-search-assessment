@@ -5,7 +5,7 @@ import { SearchForm } from "@/components/search/SearchForm";
 import { FiltersPanel } from "@/components/results/FiltersPanel";
 import { ResultsSummaryBar } from "@/components/results/ResultsSummaryBar";
 import { ResultsList } from "@/components/results/ResultsList";
-import PriceChart from "@/components/charts/PriceChart";
+import { PriceChart } from "@/components/charts/PriceChart";
 import { useSearchStore } from "@/store/searchStore";
 import type { SearchFormValues } from "@/components/search/schema";
 
@@ -102,8 +102,9 @@ export function SearchExperience() {
           ) : null}
 
           <ResultsSummaryBar />
+          
+          <ResultsList />
 
-          <ResultsList isLoading={isLoading} />
 
           <PriceChart />
         </div>
