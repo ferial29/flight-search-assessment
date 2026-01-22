@@ -52,6 +52,6 @@ AMADEUS_ENV=test
 
 ▶️ Demo
 
-Live Demo: https://your-vercel-link.vercel.app
+Live Demo: https://flight-search-assessment-uv8i.vercel.app/
 
 Loom Walkthrough (3–4 min): https://loom.com/share/your-video-id
