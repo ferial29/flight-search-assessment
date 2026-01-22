@@ -47,14 +47,18 @@ export function SearchExperience() {
       const data = await res.json();
 
       if (!res.ok) {
-        const msg = typeof data?.error === "string" ? data.error : "Search failed. Please try again.";
+        const msg =
+          typeof data?.error === "string"
+            ? data.error
+            : "Search failed. Please try again.";
         throw new Error(msg);
       }
 
-      // Accept both shapes:
-      // 1) { results: [...] }
-      // 2) [...] (array)
-      const results = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      const results = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
 
       setResultsRaw(results);
     } catch (e) {
@@ -77,7 +81,8 @@ export function SearchExperience() {
 
       {/* Search */}
       <div className="mt-6">
-        <Card title="Search" subtitle="Use IATA codes for now (MCT, DXB, IST...)">
+        {/* ✅ Card بدون title/subtitle چون SearchForm خودش هدر داره */}
+        <Card className="p-5">
           <SearchForm onSubmit={handleSearch} />
         </Card>
       </div>
@@ -102,9 +107,9 @@ export function SearchExperience() {
           ) : null}
 
           <ResultsSummaryBar />
-          
-          <ResultsList />
 
+          {/* اگر خواستی لودینگ رو نمایش بدی می‌تونیم اسکلتون هم اضافه کنیم */}
+          <ResultsList />
 
           <PriceChart />
         </div>
