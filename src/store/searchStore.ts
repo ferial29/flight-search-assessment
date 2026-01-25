@@ -35,6 +35,9 @@ type SearchState = {
   filters: FiltersState;
   sortBy: SortBy;
 
+  // ✅ Selected flight id (for "Select" button)
+  selectedResultId: string | null;
+
   setSearchParams: (params: SearchFormValues) => void;
   setResultsRaw: (results: FlightResult[]) => void;
   setLoading: (v: boolean) => void;
@@ -46,6 +49,10 @@ type SearchState = {
   resetFilters: () => void;
 
   setSortBy: (v: SortBy) => void;
+
+  // ✅ selection actions
+  setSelectedResultId: (id: string | null) => void;
+  clearSelected: () => void;
 };
 
 const defaultFilters: FiltersState = {
@@ -62,7 +69,19 @@ export const useSearchStore = create<SearchState>((set, get) => {
     const filters = s.filters ?? defaultFilters;
     const sortBy = s.sortBy ?? "best";
 
-    const next = getVisibleResults(raw as any, filters as any, sortBy as any) as FlightResult[];
+    const next = getVisibleResults(
+      raw as any,
+      filters as any,
+      sortBy as any
+    ) as FlightResult[];
+
+    // ✅ If selected flight is no longer visible (filtered out), clear it
+    const selected = s.selectedResultId;
+    if (selected && !next.some((r) => r.id === selected)) {
+      set({ resultsFiltered: next, selectedResultId: null });
+      return;
+    }
+
     set({ resultsFiltered: next });
   };
 
@@ -78,10 +97,14 @@ export const useSearchStore = create<SearchState>((set, get) => {
     filters: defaultFilters,
     sortBy: "best",
 
+    selectedResultId: null,
+
     setSearchParams: (params) => set({ searchParams: params }),
 
     setResultsRaw: (results) => {
       set({ resultsRaw: results ?? [] });
+      // ✅ new search should reset selection
+      set({ selectedResultId: null });
       recompute();
     },
 
@@ -122,5 +145,9 @@ export const useSearchStore = create<SearchState>((set, get) => {
       set({ sortBy: v });
       recompute();
     },
+
+    // ✅ selection actions
+    setSelectedResultId: (id) => set({ selectedResultId: id }),
+    clearSelected: () => set({ selectedResultId: null }),
   };
 });
